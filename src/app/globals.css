@@ -370,3 +370,12 @@ button.primary,
   animation: spin 1s linear infinite;
   filter: invert(1);
 }
+
+.status-select {
+  color: #000;
+  background-color: #fff;
+}
+
+.status-select option {
+  color: #000;
+}
