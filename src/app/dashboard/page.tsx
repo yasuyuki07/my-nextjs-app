@@ -1,216 +1,231 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
-// DBのstatus値 ↔ 表示名
-const STATUS_LABEL: Record<string, string> = {
-  open: '未着手',
-  in_progress: '進行中',
-  done: '完了',
-};
-
-type StatusKey = keyof typeof STATUS_LABEL | 'all';
+// ===== Types =====
+type DbStatus = 'open' | 'in_progress' | 'done';
 
 type TodoRow = {
   id: string;
   task: string;
-  status: string;              // 'open' | 'in_progress' | 'done'
-  due_date: string | null;     // 'YYYY-MM-DD' or null
-  meeting_id: string | null;
-  // リレーション。外部キーが貼られていれば取得できます（無ければ null になります）
-  meetings?: {
+  status: DbStatus;
+  due_date: string | null;
+  meeting: {
     title: string | null;
-    meeting_date: string | null; // ISO文字列
+    meeting_date: string | null;
   } | null;
 };
 
+// Supabase から返る “生” の行（status は string として受ける）
+type RawTodoRow = Omit<TodoRow, 'status'> & { status: string };
+
+type StatusFilter = DbStatus | 'all';
+type SortOrder = 'asc' | 'desc';
+
+// ===== Helpers =====
+const formatDate = (iso: string | null): string => {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}/${mm}/${dd}`;
+};
+
+// 受け取った文字列を DB 用の許可値に正規化
+const toDbStatus = (s: string): DbStatus => {
+  const key = String(s).toLowerCase();
+  if (
+    key === 'in_progress' ||
+    key === 'in-progress' ||
+    key === 'inprogress' ||
+    key === 'doing' ||
+    key === '進行中'
+  )
+    return 'in_progress';
+  if (key === 'done' || key === '完了') return 'done';
+  return 'open'; // 既定
+};
+
+const STATUS_OPTIONS: { value: DbStatus; label: string }[] = [
+  { value: 'open',        label: '未着手' },
+  { value: 'in_progress', label: '進行中' },
+  { value: 'done',        label: '完了' },
+];
+
 export default function DashboardPage() {
-  const router = useRouter();
-  const [userId, setUserId] = useState<string | null>(null);
-  const [loadingUser, setLoadingUser] = useState(true);
+  // UI states
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // 絞り込み・並び替え状態
-  const [statusFilter, setStatusFilter] = useState<StatusKey>('all');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-
-  // データ
+  // data
   const [todos, setTodos] = useState<TodoRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
-  // 1) ログインユーザー取得
+  // controls
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+
+  // ===== Fetch my todos (assigned to current user) =====
   useEffect(() => {
     let mounted = true;
     const run = async () => {
-      setLoadingUser(true);
-      const { data } = await supabase.auth.getUser();
-      if (!mounted) return;
-      const id = data.user?.id ?? null;
-      setUserId(id);
-      setLoadingUser(false);
+      setLoading(true);
+      setError(null);
 
-      if (!id) {
-        // 未ログインならログイン画面へ
-        router.push('/login');
+      // 1) ensure login
+      const { data: userData, error: userErr } = await supabase.auth.getUser();
+      if (userErr) {
+        setError(userErr.message);
+        setLoading(false);
+        return;
       }
-    };
-    run();
-    return () => { mounted = false; };
-  }, [router]);
+      const userId = userData.user?.id;
+      if (!userId) {
+        setError('ログインが必要です。/login からサインインしてください。');
+        setLoading(false);
+        return;
+      }
 
-  // 2) ToDo取得
-  const fetchTodos = async () => {
-    if (!userId) return;
-    setLoading(true);
-    setLoadError(null);
-    try {
-      // ベースクエリ
-      let query = supabase
+      // 2) query
+      const { data, error: qErr } = await supabase
         .from('todos')
-        .select(`
-          id, task, status, due_date, meeting_id,
-          meetings ( title, meeting_date )
-        `)
-        .eq('assignee_id', userId);
+        .select('id, task, status, due_date, meeting:meetings(title, meeting_date)')
+        .eq('assignee_id', userId)
+        .order('due_date', { ascending: true })
+        .returns<RawTodoRow[]>();
 
-      // ステータス絞り込み
-      if (statusFilter !== 'all') {
-        query = query.eq('status', statusFilter);
+      if (!mounted) return;
+
+      if (qErr) {
+        setError(qErr.message);
+      } else {
+        // “doing” など過去値も in_progress に正規化してから state へ
+        const normalized: TodoRow[] =
+          (data ?? []).map((r) => ({ ...r, status: toDbStatus(r.status) }));
+        setTodos(normalized);
       }
-
-      // 並び順：期限（nullは先頭に）
-      query = query.order('due_date', { ascending: sortOrder === 'asc', nullsFirst: true });
-
-      const { data, error } = await query;
-      if (error) throw error;
-
-      setTodos((data ?? []) as unknown as TodoRow[]);
-    } catch (e: any) {
-      console.error(e);
-      setLoadError(e?.message || '読み込みに失敗しました');
-    } finally {
       setLoading(false);
+    };
+
+    run();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // ===== Derived list (filter + sort) =====
+  const view = useMemo(() => {
+    const filtered =
+      statusFilter === 'all' ? todos : todos.filter((t) => t.status === statusFilter);
+
+    const sorted = [...filtered].sort((a, b) => {
+      const aTime = a.due_date ? new Date(a.due_date).getTime() : Infinity;
+      const bTime = b.due_date ? new Date(b.due_date).getTime() : Infinity;
+      return sortOrder === 'asc' ? aTime - bTime : bTime - aTime;
+    });
+    return sorted;
+  }, [todos, statusFilter, sortOrder]);
+
+  // ===== Update status (optimistic) =====
+  const handleStatusChange = async (id: string, nextRaw: string) => {
+    const next = toDbStatus(nextRaw);
+    setSavingId(id);
+    setError(null);
+
+    // 現在値を保持（失敗時ロールバック用）
+    const current = todos.find((t) => t.id === id)?.status ?? 'open';
+
+    // optimistic
+    setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, status: next } : t)));
+
+    const { error: upErr } = await supabase.from('todos').update({ status: next }).eq('id', id);
+    setSavingId(null);
+
+    if (upErr) {
+      // rollback
+      setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, status: current } : t)));
+      setError(upErr.message);
+      alert(`保存に失敗しました: ${upErr.message}`);
     }
   };
 
-  // 絞り込み・並び替え・ログインIDが変わったら再読込
-  useEffect(() => {
-    if (userId) fetchTodos();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId, statusFilter, sortOrder]);
-
-  // 表示用：件数
-  const countText = useMemo(() => {
-    const total = todos.length;
-    const label =
-      statusFilter === 'all' ? 'すべて' : STATUS_LABEL[statusFilter] ?? statusFilter;
-    return `${label}: ${total}件`;
-  }, [todos.length, statusFilter]);
-
-  // 日付の見た目
-  const fmtDate = (d: string | null) => {
-    if (!d) return '—';
-    // due_date は DATE型想定なのでそのまま表示
-    return d;
-  };
-
+  // ===== Render =====
   return (
-    <div className="mx-auto max-w-4xl p-6">
-      <h1 className="text-2xl font-bold mb-4">マイダッシュボード</h1>
+    <div className="max-w-3xl mx-auto p-6">
+      <h1 className="text-3xl font-bold mb-6">マイダッシュボード</h1>
 
-      {/* フィルタ＆ソート */}
-      <div className="flex flex-col sm:flex-row gap-3 sm:items-end sm:justify-between mb-4">
-        <div className="flex gap-2">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">ステータス</label>
-            <select
-              className="px-3 py-2 border rounded-md bg-white text-gray-900"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as StatusKey)}
-            >
-              <option value="all">すべて</option>
-              <option value="open">{STATUS_LABEL.open}</option>
-              <option value="in_progress">{STATUS_LABEL.in_progress}</option>
-              <option value="done">{STATUS_LABEL.done}</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">期限の並び</label>
-            <select
-              className="px-3 py-2 border rounded-md bg-white text-gray-900"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
-            >
-              <option value="asc">昇順（近い順）</option>
-              <option value="desc">降順（遠い順）</option>
-            </select>
-          </div>
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-gray-400">ステータス</span>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(toDbStatus(e.target.value) as StatusFilter)}
+            className="status-select px-3 py-2 border rounded-md bg-white text-gray-900
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            <option value="all" className="text-black">すべて</option>
+            {STATUS_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value} className="text-black">
+                {opt.label}
+              </option>
+            ))}
+          </select>
         </div>
 
-        <div className="text-sm text-gray-500">{countText}</div>
-      </div>
-
-      {/* 本体 */}
-      {loadingUser || loading ? (
-        <p className="text-sm text-gray-500">読み込み中…</p>
-      ) : loadError ? (
-        <p className="text-sm text-red-600">{loadError}</p>
-      ) : todos.length === 0 ? (
-        <div className="rounded-md border p-6 text-center text-gray-500">
-          表示できるToDoがありません。
-        </div>
-      ) : (
-        <ul className="space-y-3">
-          {todos.map((t) => {
-            const meetingTitle = t.meetings?.title ?? '（会議名なし）';
-            const meetingDate = t.meetings?.meeting_date
-              ? new Date(t.meetings.meeting_date).toLocaleString()
-              : '';
-
-            return (
-              <li key={t.id} className="border rounded-md bg-white p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm">
-                    <div className="font-semibold">{t.task || '(無題のタスク)'}</div>
-                    <div className="text-gray-500">
-                      会議：{meetingTitle}
-                      {meetingDate && <span className="ml-2">{meetingDate}</span>}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`text-xs rounded-full px-2 py-1 border
-                        ${t.status === 'done' ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                        : t.status === 'in_progress' ? 'bg-amber-50 border-amber-200 text-amber-700'
-                        : 'bg-gray-50 border-gray-200 text-gray-700'}`}
-                      title="ステータス"
-                    >
-                      {STATUS_LABEL[t.status] ?? t.status}
-                    </span>
-                    <span className="text-sm text-gray-600" title="期限">
-                      期限：{fmtDate(t.due_date)}
-                    </span>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      {/* 末尾：手動リロード */}
-      <div className="mt-6">
         <button
-          onClick={fetchTodos}
-          className="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700"
+          type="button"
+          onClick={() => setSortOrder((s) => (s === 'asc' ? 'desc' : 'asc'))}
+          className="px-3 py-2 text-sm rounded-md border
+                     bg-white text-gray-900 hover:bg-gray-50
+                     focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
         >
-          最新の情報を再取得
+          期限で並び替え: {sortOrder === 'asc' ? '昇順' : '降順'}
         </button>
       </div>
+
+      {loading && <p className="text-sm text-gray-400">読み込み中…</p>}
+      {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {!loading && view.length === 0 && (
+        <p className="text-sm text-gray-400">表示できるToDoがありません。</p>
+      )}
+
+      <ul className="space-y-5 list-none pl-0">
+        {view.map((t) => (
+          <li key={t.id} className="border rounded-md p-4 bg-black/5">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="leading-6">{t.task}</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  会議: {t.meeting?.title ?? '-'} ／ 期限: {formatDate(t.due_date)}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-gray-400">ステータス</span>
+                <select
+                  value={t.status}
+                  onChange={(e) => handleStatusChange(t.id, e.target.value)}
+                  disabled={savingId === t.id}
+                  className="status-select px-2 py-1 border rounded-md bg-white text-gray-900
+                             focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  {STATUS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value} className="text-black">
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
+
