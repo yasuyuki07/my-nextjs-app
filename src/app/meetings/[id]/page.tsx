@@ -52,9 +52,7 @@ export default async function MeetingDetailPage({
 
   // 1) 認証（RLS のため必要）
   const { data: auth } = await supabase.auth.getUser()
-  if (!auth.user?.id) {
-    notFound()
-  }
+  if (!auth.user?.id) notFound()
 
   // 2) 会議本体
   const { data: meeting, error: mErr } = await supabase
@@ -63,9 +61,7 @@ export default async function MeetingDetailPage({
     .eq('id', params.id)
     .single<MeetingCore>()
 
-  if (mErr || !meeting) {
-    notFound()
-  }
+  if (mErr || !meeting) notFound()
 
   // 3) 決定事項
   const { data: decisionsData } = await supabase
@@ -75,9 +71,9 @@ export default async function MeetingDetailPage({
     .order('id', { ascending: true })
     .returns<DecisionRow[]>()
 
-  const decisions = decisionsData ?? []
+  const decisions: DecisionRow[] = decisionsData ?? []
 
-  // 4) ToDo（素の行）
+  // 4) ToDo（素の行）— ★ null 安全フォールバック
   const { data: todosRawData } = await supabase
     .from('todos')
     .select('id, task, status, due_date, assignee_id')
@@ -85,15 +81,12 @@ export default async function MeetingDetailPage({
     .order('due_date', { ascending: true })
     .returns<TodoRaw[]>()
 
-  // ★ ここがポイント：null を空配列へフォールバック
-  const todosRaw: TodoRaw[] = todosRawData ?? []
+  const todosRaw: TodoRaw[] = Array.isArray(todosRawData) ? todosRawData : []
 
   // 5) 担当者プロフィールをまとめて取得してマージ
   const assigneeIds = Array.from(
     new Set(
-      (todosRaw ?? [])
-        .map((t) => t.assignee_id)
-        .filter((v): v is string => !!v) // null を除外し型を絞る
+      todosRaw.map((t) => t.assignee_id).filter((v): v is string => !!v)
     )
   )
 
