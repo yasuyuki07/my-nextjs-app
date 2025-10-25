@@ -1,10 +1,9 @@
+// src/utils/supabase/middleware.js
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
 export async function updateSession(request) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  })
+  let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -15,19 +14,24 @@ export async function updateSession(request) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
+          // ① 未使用なので options -> _options に変更（eslint ルールに適合）
+          cookiesToSet.forEach(({ name, value, options: _options }) => {
+            request.cookies.set(name, value)
           })
-          cookiesToSet.forEach(({ name, value, options }) =>
+
+          // 以降はレスポンス側に確定セット
+          supabaseResponse = NextResponse.next({ request })
+
+          // ② こちらの options は実際に使うのでそのまま
+          cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options)
-          )
+          })
         },
       },
     }
   )
 
-  // refreshing the auth token
+  // refresh auth token
   await supabase.auth.getUser()
 
   return supabaseResponse
