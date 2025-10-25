@@ -1,179 +1,190 @@
 // src/app/meetings/[id]/page.tsx
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 
-// 型
-type Meeting = {
+// ===== Types =====
+type Profile = { id: string; full_name: string | null; username: string | null }
+
+type MeetingCore = {
   id: string
-  title: string
+  title: string | null
   meeting_date: string | null
-  summary: string[] | null
   transcript: string | null
+  summary: string[] | null
 }
 
-type Decision = { id: string; content: string }
-type TodoRow = {
+type DecisionRow = { content: string | null }
+
+type DbStatus = 'open' | 'in_progress' | 'done'
+type TodoRaw = {
   id: string
   task: string
-  status: 'open' | 'in_progress' | 'done' | string
+  status: DbStatus
   due_date: string | null
   assignee_id: string | null
 }
-type Profile = { id: string; full_name: string | null; username: string | null }
+type TodoView = TodoRaw & { assignee: Profile | null }
 
-// Next.js 15 の Dynamic APIs 対応：params は await する
+// ===== Helpers =====
+const formatDate = (iso: string | null) => {
+  if (!iso) return '-'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mi = String(d.getMinutes()).padStart(2, '0')
+  return `${yyyy}/${mm}/${dd} ${hh}:${mi}`
+}
+
+const statusLabel = (s: DbStatus) =>
+  s === 'done' ? '完了' : s === 'in_progress' ? '進行中' : '未着手'
+
+// ===== Page =====
 export default async function MeetingDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }>
+  params: { id: string }
 }) {
-  const { id } = await params
   const supabase = createClient()
 
-  // 1) 会議本体
+  // 1) 認証（RLS のため必要）
+  const { data: auth } = await supabase.auth.getUser()
+  if (!auth.user?.id) {
+    notFound()
+  }
+
+  // 2) 会議本体
   const { data: meeting, error: mErr } = await supabase
     .from('meetings')
-    .select('id, title, meeting_date, summary, transcript')
-    .eq('id', id)
-    .single<Meeting>()
+    .select('id, title, meeting_date, transcript, summary')
+    .eq('id', params.id)
+    .single<MeetingCore>()
 
-  if (mErr) {
-    // RLS で読めない or 存在しない 等の場合
-    notFound()
-  }
-  if (!meeting) {
+  if (mErr || !meeting) {
     notFound()
   }
 
-  // 2) 決定事項
-  const { data: decisions = [] } = await supabase
+  // 3) 決定事項
+  const { data: decisionsData } = await supabase
     .from('decisions')
-    .select('id, content')
-    .eq('meeting_id', id)
-    .order('created_at', { ascending: true })
-    .returns<Decision[]>()
+    .select('content')
+    .eq('meeting_id', meeting.id)
+    .order('id', { ascending: true })
+    .returns<DecisionRow[]>()
 
-  // 3) ToDo（まずは assignee_id だけ）
-  const { data: todosRaw = [] } = await supabase
+  const decisions = decisionsData ?? []
+
+  // 4) ToDo（素の行）
+  const { data: todosRawData } = await supabase
     .from('todos')
     .select('id, task, status, due_date, assignee_id')
-    .eq('meeting_id', id)
+    .eq('meeting_id', meeting.id)
     .order('due_date', { ascending: true })
-    .returns<TodoRow[]>()
+    .returns<TodoRaw[]>()
 
-  // 4) 担当者プロフィールをまとめて取得して、map
+  // ★ ここがポイント：null を空配列へフォールバック
+  const todosRaw: TodoRaw[] = todosRawData ?? []
+
+  // 5) 担当者プロフィールをまとめて取得してマージ
   const assigneeIds = Array.from(
-    new Set(todosRaw.map((t) => t.assignee_id).filter(Boolean)) // null を除外
-  ) as string[]
+    new Set(
+      (todosRaw ?? [])
+        .map((t) => t.assignee_id)
+        .filter((v): v is string => !!v) // null を除外し型を絞る
+    )
+  )
 
   let profilesById = new Map<string, Profile>()
   if (assigneeIds.length > 0) {
-    const { data: profiles = [] } = await supabase
+    const { data: profiles } = await supabase
       .from('profiles')
       .select('id, full_name, username')
       .in('id', assigneeIds)
       .returns<Profile[]>()
 
-    profilesById = new Map(profiles.map((p) => [p.id, p]))
+    for (const p of profiles ?? []) {
+      profilesById.set(p.id, p)
+    }
   }
 
-  const todos = todosRaw.map((t) => ({
+  const todos: TodoView[] = todosRaw.map((t) => ({
     ...t,
     assignee: t.assignee_id ? profilesById.get(t.assignee_id) ?? null : null,
   }))
 
-  // 補助
-  const formatDate = (iso: string | null) => {
-    if (!iso) return '-'
-    const d = new Date(iso)
-    if (Number.isNaN(d.getTime())) return iso
-    const yyyy = d.getFullYear()
-    const mm = String(d.getMonth() + 1).padStart(2, '0')
-    const dd = String(d.getDate()).padStart(2, '0')
-    return `${yyyy}/${mm}/${dd}`
-  }
-  const jpStatus = (s: string) =>
-    s === 'done' ? '完了' : s === 'in_progress' ? '進行中' : '未着手'
-
+  // 6) 表示
   return (
     <div className="max-w-3xl mx-auto p-6">
-      <div className="mb-6">
-        <Link href="/meetings" className="text-indigo-600 hover:underline">
-          ← 会議一覧 / 作成へ戻る
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">会議詳細</h1>
+        <Link href="/meetings" className="text-sm text-indigo-600 hover:underline">
+          一覧へ戻る
         </Link>
       </div>
 
-      <h1 className="text-2xl font-bold">{meeting.title}</h1>
-      <p className="text-sm text-gray-500 mt-1">
-        開催日: {formatDate(meeting.meeting_date)}
-      </p>
+      <section className="mb-6">
+        <h2 className="text-xl font-semibold">{meeting.title ?? '(無題)'}</h2>
+        <p className="text-sm text-gray-500 mt-1">開催日時: {formatDate(meeting.meeting_date)}</p>
+      </section>
 
-      {/* 要約 */}
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold mb-2">要約</h2>
-        {Array.isArray(meeting.summary) && meeting.summary.length > 0 ? (
+      {Array.isArray(meeting.summary) && meeting.summary.length > 0 && (
+        <section className="mb-6">
+          <h3 className="font-semibold mb-2">要約</h3>
           <ul className="list-disc pl-5 space-y-1">
             {meeting.summary.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
           </ul>
-        ) : (
-          <p className="text-gray-500 text-sm">（登録なし）</p>
-        )}
-      </section>
+        </section>
+      )}
 
-      {/* 決定事項 */}
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold mb-2">決定事項</h2>
-        {decisions.length > 0 ? (
+      {decisions.length > 0 && (
+        <section className="mb-6">
+          <h3 className="font-semibold mb-2">決定事項</h3>
           <ul className="list-disc pl-5 space-y-1">
-            {decisions.map((d) => (
-              <li key={d.id}>{d.content}</li>
+            {decisions.map((d, i) => (
+              <li key={i}>{d.content}</li>
             ))}
           </ul>
-        ) : (
-          <p className="text-gray-500 text-sm">（登録なし）</p>
-        )}
-      </section>
+        </section>
+      )}
 
-      {/* ToDo */}
-      <section className="mt-6">
-        <h2 className="text-lg font-semibold mb-2">ToDo</h2>
-        {todos.length > 0 ? (
+      <section className="mb-6">
+        <h3 className="font-semibold mb-2">ToDo</h3>
+        {todos.length === 0 ? (
+          <p className="text-sm text-gray-500">登録された ToDo はありません。</p>
+        ) : (
           <ul className="space-y-3">
             {todos.map((t) => (
               <li key={t.id} className="border rounded-md p-3 bg-white">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="font-medium">{t.task}</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      期限: {formatDate(t.due_date)} ／ ステータス: {jpStatus(t.status)}
+                      期限: {t.due_date ? formatDate(t.due_date) : '-'} ／ 担当:{' '}
+                      {t.assignee?.full_name || t.assignee?.username || '-'}
                     </p>
                   </div>
-                  <div className="text-sm text-gray-700">
-                    担当:{' '}
-                    {t.assignee
-                      ? t.assignee.full_name || `@${t.assignee.username}`
-                      : '（未設定）'}
-                  </div>
+                  <span className="text-xs px-2 py-1 rounded-md border bg-white text-gray-900">
+                    {statusLabel(t.status)}
+                  </span>
                 </div>
               </li>
             ))}
           </ul>
-        ) : (
-          <p className="text-gray-500 text-sm">（登録なし）</p>
         )}
       </section>
 
-      {/* 文字起こし（必要なら） */}
       {meeting.transcript && (
-        <section className="mt-8">
-          <h2 className="text-lg font-semibold mb-2">文字起こし（全文）</h2>
-          <pre className="whitespace-pre-wrap p-3 bg-gray-50 border rounded">
+        <details className="mt-8">
+          <summary className="cursor-pointer text-sm text-gray-600">文字起こし（全文）を表示</summary>
+          <pre className="mt-2 p-3 bg-gray-50 border rounded whitespace-pre-wrap text-sm">
             {meeting.transcript}
           </pre>
-        </section>
+        </details>
       )}
     </div>
   )
