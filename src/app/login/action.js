@@ -13,13 +13,10 @@ export async function login(formData) {
 
   const { error } = await supabase.auth.signInWithPassword({ email, password })
   if (error) {
-    // エラーをクエリに載せて /login に戻す
     redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
-  // 画面キャッシュを無効化（任意）
   revalidatePath('/', 'layout')
-  // ここを本アプリの遷移先に
   redirect('/meetings/new')
 }
 
@@ -35,11 +32,10 @@ export async function signup(formData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`)
   }
 
-  // メール確認を使う設定のときは即ログインしないので案内だけ返す
   redirect('/login?ok=check-email')
 }
 
-// ログアウト（任意：ヘッダーなどから呼ぶ）
+// ログアウト
 export async function logout() {
   const supabase = await createClient()
   await supabase.auth.signOut()
