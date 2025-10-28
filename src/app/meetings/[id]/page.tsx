@@ -90,7 +90,7 @@ export default async function MeetingDetailPage({
     )
   )
 
-  let profilesById = new Map<string, Profile>()
+  const profilesById = new Map<string, Profile>()
   if (assigneeIds.length > 0) {
     const { data: profiles } = await supabase
       .from('profiles')
@@ -182,3 +182,4 @@ export default async function MeetingDetailPage({
     </div>
   )
 }
+
