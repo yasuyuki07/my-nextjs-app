@@ -1,3 +1,8 @@
+export const dynamic = 'force-dynamic'
+import { unstable_noStore as noStore } from 'next/cache'
+noStore()
+
+
 // src/app/meetings/page.tsx
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/server';
