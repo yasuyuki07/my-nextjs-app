@@ -2,28 +2,22 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export async function createClient() {
-  // Next.js 15 では cookies() を await して実体を取得
-  const cookieStore = await cookies()
+export function createClient() {
+  const cookieStore = cookies()
 
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,              // ← env は必須なので ! を付ける
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,  // ← anon key
     {
       cookies: {
         get(name: string) {
           return cookieStore.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          // Server Component から呼ばれると set 不可のため try/catch で握りつぶす
-          try {
-            cookieStore.set(name, value, options)
-          } catch {}
+          cookieStore.set({ name, value, ...options })
         },
         remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.set(name, '', { ...options, maxAge: 0 })
-          } catch {}
+          cookieStore.set({ name, value: '', ...options })
         },
       },
     }

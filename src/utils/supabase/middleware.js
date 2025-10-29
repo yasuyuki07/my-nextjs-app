@@ -14,13 +14,15 @@ export async function updateSession(request) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          // request 側へは options を使えないので未使用扱いに（lint 回避）
+          // ① 未使用なので options -> _options に変更（eslint ルールに適合）
           cookiesToSet.forEach(({ name, value, options: _options }) => {
             request.cookies.set(name, value)
           })
 
-          // response を作り直して Set-Cookie を付与
+          // 以降はレスポンス側に確定セット
           supabaseResponse = NextResponse.next({ request })
+
+          // ② こちらの options は実際に使うのでそのまま
           cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options)
           })
@@ -29,7 +31,7 @@ export async function updateSession(request) {
     }
   )
 
-  // リフレッシュ（必要なときだけ実行されます）
+  // refresh auth token
   await supabase.auth.getUser()
 
   return supabaseResponse
