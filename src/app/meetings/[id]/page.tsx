@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 
-// ===== Types =====
 type Profile = { id: string; full_name: string | null; username: string | null }
 
 type MeetingCore = {
@@ -26,7 +25,6 @@ type TodoRaw = {
 }
 type TodoView = TodoRaw & { assignee: Profile | null }
 
-// ===== Helpers =====
 const formatDate = (iso: string | null) => {
   if (!iso) return '-'
   const d = new Date(iso)
@@ -42,13 +40,13 @@ const formatDate = (iso: string | null) => {
 const statusLabel = (s: DbStatus) =>
   s === 'done' ? '完了' : s === 'in_progress' ? '進行中' : '未着手'
 
-// ===== Page =====
 export default async function MeetingDetailPage({
   params,
 }: {
   params: { id: string }
 }) {
-  const supabase = createClient()
+  // ★ ここを await に
+  const supabase = await createClient()
 
   // 1) 認証（RLS のため必要）
   const { data: auth } = await supabase.auth.getUser()
@@ -73,7 +71,7 @@ export default async function MeetingDetailPage({
 
   const decisions: DecisionRow[] = decisionsData ?? []
 
-  // 4) ToDo（素の行）— ★ null 安全フォールバック
+  // 4) ToDo（素の行）
   const { data: todosRawData } = await supabase
     .from('todos')
     .select('id, task, status, due_date, assignee_id')
@@ -83,7 +81,7 @@ export default async function MeetingDetailPage({
 
   const todosRaw: TodoRaw[] = Array.isArray(todosRawData) ? todosRawData : []
 
-  // 5) 担当者プロフィールをまとめて取得してマージ
+  // 5) 担当者プロフィール
   const assigneeIds = Array.from(
     new Set(
       todosRaw.map((t) => t.assignee_id).filter((v): v is string => !!v)
@@ -108,7 +106,6 @@ export default async function MeetingDetailPage({
     assignee: t.assignee_id ? profilesById.get(t.assignee_id) ?? null : null,
   }))
 
-  // 6) 表示
   return (
     <div className="max-w-3xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
