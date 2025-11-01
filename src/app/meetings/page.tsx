@@ -1,8 +1,3 @@
-export const dynamic = 'force-dynamic'
-import { unstable_noStore as noStore } from 'next/cache'
-noStore()
-
-
 // src/app/meetings/page.tsx
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
