@@ -1,24 +1,26 @@
 // src/app/api/search/route.ts
-import { NextResponse } from 'next/server';
-import { createClient } from '@/utils/supabase/server';
+import { NextResponse } from 'next/server'
+import { createClient } from '@/utils/supabase/server'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 type Hit =
   | { type: 'meeting'; id: string; title: string | null; meeting_date: string | null }
   | { type: 'decision'; id: string; content: string; meeting_title: string | null }
-  | { type: 'todo'; id: string; task: string; status: string; meeting_title: string | null };
+  | { type: 'todo'; id: string; task: string; status: string; meeting_title: string | null }
 
 function toBool(v: string | null) {
-  return v === '1' || v === 'true';
+  return v === '1' || v === 'true'
 }
 
 async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boolean }) {
-  const { q, inDecisions, inTodos } = params;
-  const supabase = createClient();
-  const hits: Hit[] = [];
+  const { q, inDecisions, inTodos } = params
+  const supabase = await createClient() // ★ ここを await に
+  const hits: Hit[] = []
 
-  // キーワード未入力なら空で返す
-  const keyword = q?.trim();
-  if (!keyword) return { hits };
+  const keyword = q?.trim()
+  if (!keyword) return { hits }
 
   // --- meetings: title を検索 ---
   {
@@ -27,7 +29,8 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
       .select('id, title, meeting_date')
       .ilike('title', `%${keyword}%`)
       .order('meeting_date', { ascending: false })
-      .limit(10);
+      .limit(10)
+
     if (!error && data) {
       hits.push(
         ...data.map((m) => ({
@@ -36,7 +39,7 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
           title: (m as any).title ?? null,
           meeting_date: (m as any).meeting_date ?? null,
         })),
-      );
+      )
     }
   }
 
@@ -46,7 +49,8 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
       .from('decisions')
       .select('id, content, meetings(title)')
       .ilike('content', `%${keyword}%`)
-      .limit(20);
+      .limit(20)
+
     if (!error && data) {
       hits.push(
         ...data.map((d) => ({
@@ -55,7 +59,7 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
           content: (d as any).content as string,
           meeting_title: ((d as any).meetings?.title as string) ?? null,
         })),
-      );
+      )
     }
   }
 
@@ -65,7 +69,8 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
       .from('todos')
       .select('id, task, status, meetings(title)')
       .ilike('task', `%${keyword}%`)
-      .limit(20);
+      .limit(20)
+
     if (!error && data) {
       hits.push(
         ...data.map((t) => ({
@@ -75,36 +80,35 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
           status: (t as any).status as string,
           meeting_title: ((t as any).meetings?.title as string) ?? null,
         })),
-      );
+      )
     }
   }
 
-  return { hits };
+  return { hits }
 }
 
 // --------- HTTP handlers ---------
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const q = url.searchParams.get('q') ?? '';
-  const inDecisions = toBool(url.searchParams.get('d'));
-  const inTodos = toBool(url.searchParams.get('t'));
+  const url = new URL(req.url)
+  const q = url.searchParams.get('q') ?? ''
+  const inDecisions = toBool(url.searchParams.get('d'))
+  const inTodos = toBool(url.searchParams.get('t'))
 
-  const result = await runSearch({ q, inDecisions, inTodos });
-  return NextResponse.json(result, { status: 200 });
+  const result = await runSearch({ q, inDecisions, inTodos })
+  return NextResponse.json(result, { status: 200 })
 }
 
 export async function POST(req: Request) {
-  // 互換用：POST ボディでも受け付ける
   const body = (await req.json().catch(() => ({}))) as {
-    q?: string;
-    d?: string | boolean;
-    t?: string | boolean;
-  };
-  const q = body.q ?? '';
-  const inDecisions = typeof body.d === 'boolean' ? body.d : toBool(String(body.d ?? ''));
-  const inTodos = typeof body.t === 'boolean' ? body.t : toBool(String(body.t ?? ''));
+    q?: string
+    d?: string | boolean
+    t?: string | boolean
+  }
+  const q = body.q ?? ''
+  const inDecisions = typeof body.d === 'boolean' ? body.d : toBool(String(body.d ?? ''))
+  const inTodos = typeof body.t === 'boolean' ? body.t : toBool(String(body.t ?? ''))
 
-  const result = await runSearch({ q, inDecisions, inTodos });
-  return NextResponse.json(result, { status: 200 });
+  const result = await runSearch({ q, inDecisions, inTodos })
+  return NextResponse.json(result, { status: 200 })
 }
