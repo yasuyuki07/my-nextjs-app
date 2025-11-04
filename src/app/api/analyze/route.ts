@@ -11,6 +11,16 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const rawApiKey = process.env.DIFY_API_KEY ?? process.env.NEXT_PUBLIC_DIFY_API_KEY
+  const apiKey = rawApiKey?.trim()
+
+  if (!apiKey) {
+    return NextResponse.json(
+      { error: 'Dify API key is not configured on the server.' },
+      { status: 500 }
+    )
+  }
+
   try {
     const { title, meetingDate, transcript, conversationId } = await req.json()
 
@@ -44,13 +54,23 @@ export async function POST(req: Request) {
     const res = await fetch(url, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.DIFY_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(payload),
     })
 
     const data = await res.json()
+    if (!res.ok && res.status === 401) {
+      return NextResponse.json(
+        {
+          error: 'Dify rejected the request because the API key was invalid. Please double-check the configured key.',
+          details: data,
+        },
+        { status: 401 }
+      )
+    }
+
     return NextResponse.json(data, { status: res.status })
   } catch (error) {
     console.error('Dify API error:', error)
