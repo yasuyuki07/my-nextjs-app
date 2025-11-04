@@ -137,6 +137,8 @@ export default function NewMeetingPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [difyStatus, setDifyStatus] = useState<'unknown' | 'ready' | 'missing'>('unknown');
+  const [difyStatusError, setDifyStatusError] = useState<string | null>(null);
 
   // ===== 結果表示 =====
   const [resultText, setResultText] = useState('');
@@ -190,6 +192,10 @@ export default function NewMeetingPage() {
     setIsLoading(true);
 
     try {
+      if (difyStatus === 'missing') {
+        throw new Error('サーバー側にDify APIキーが設定されていないため解析を実行できません。');
+      }
+
       const res = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -228,7 +234,8 @@ export default function NewMeetingPage() {
       }
     } catch (err) {
       console.error(err);
-      setSubmitError('クライアント側の通信エラーが発生しました。');
+      const message = err instanceof Error ? err.message : 'クライアント側の通信エラーが発生しました。';
+      setSubmitError(message);
     } finally {
       setIsLoading(false);
     }
@@ -364,6 +371,33 @@ useEffect(() => {
 }, []);
 
 
+  useEffect(() => {
+    let cancelled = false;
+    const checkDifyStatus = async () => {
+      try {
+        setDifyStatusError(null);
+        const res = await fetch('/api/analyze');
+        if (!res.ok) {
+          throw new Error(`status ${res.status}`);
+        }
+        const data = await res.json();
+        if (cancelled) return;
+        setDifyStatus(data?.hasKey ? 'ready' : 'missing');
+      } catch (err) {
+        console.error('Failed to check Dify status', err);
+        if (!cancelled) {
+          setDifyStatusError('Dify連携の状態確認に失敗しました。時間をおいて再度お試しください。');
+        }
+      }
+    };
+
+    checkDifyStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+
 
   // ===== profiles 取得 =====
   useEffect(() => {
@@ -390,9 +424,34 @@ useEffect(() => {
     return () => { mounted = false; };
   }, []);
 
+  const isDifyMissing = difyStatus === 'missing';
+  const isCheckingDify = difyStatus === 'unknown' && !difyStatusError;
+
   return (
     <div className="max-w-2xl mx-auto p-8">
       <h1 className="text-2xl font-bold mb-6">新しい議事録の解析</h1>
+
+      {isCheckingDify && (
+        <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+          Dify APIキーの設定状況を確認しています…
+        </div>
+      )}
+
+      {isDifyMissing && (
+        <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          <p>サーバー側にDify APIキーが設定されていないため、解析を実行できません。</p>
+          <p className="mt-2">
+            Vercelのプロジェクト設定で <code>DIFY_API_KEY</code>（または <code>NEXT_PUBLIC_DIFY_API_KEY</code>）を
+            環境変数として設定し、再デプロイしてください。
+          </p>
+        </div>
+      )}
+
+      {difyStatusError && (
+        <div className="mb-4 rounded-md border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-700">
+          {difyStatusError}
+        </div>
+      )}
 
       {/* 解析フォーム */}
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -464,8 +523,10 @@ useEffect(() => {
         <div>
           <button
             type="submit"
-            disabled={isLoading}
-            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white ${isLoading ? 'bg-indigo-400' : 'bg-indigo-600 hover:bg-indigo-700'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+            disabled={isLoading || isDifyMissing}
+            className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white ${
+              isLoading || isDifyMissing ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
+            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
           >
             {isLoading ? '解析中…' : '解析を実行する'}
           </button>
