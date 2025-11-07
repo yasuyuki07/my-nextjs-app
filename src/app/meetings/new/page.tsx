@@ -1,7 +1,8 @@
 'use client';
 
-import React, { ChangeEvent, useEffect, useState } from 'react';
+import React, { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 
 // ← ここはファイルの先頭（コンポーネントの外）です
 if (typeof window !== 'undefined') {
@@ -103,7 +104,7 @@ function AssigneeSuggest({
             return (
               <li
                 key={p.id}
-                className="px-3 py-2 hover:bg-indigo-50 cursor-pointer"
+                className="px-3 py-2 hover:bg-blue-50 cursor-pointer"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   onChange(display, p.id);
@@ -125,9 +126,22 @@ function AssigneeSuggest({
 }
 
 export default function NewMeetingPage() {
+  const router = useRouter();
   // ===== 入力欄 =====
   const [title, setTitle] = useState('');
-  const [meetingDate, setMeetingDate] = useState('');
+  // 開催日は 年・月・日を分割入力（時間なし）
+  const [year, setYear] = useState(''); // YYYY
+  const [month, setMonth] = useState(''); // MM
+  const [day, setDay] = useState(''); // DD
+  const yRef = useRef<HTMLInputElement | null>(null);
+  const mRef = useRef<HTMLInputElement | null>(null);
+  const dRef = useRef<HTMLInputElement | null>(null);
+  const meetingDate = useMemo(() => {
+    if (year.length === 4 && month.length === 2 && day.length === 2) {
+      return `${year}-${month}-${day}`;
+    }
+    return '';
+  }, [year, month, day]);
   const [transcript, setTranscript] = useState('');
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -287,7 +301,7 @@ export default function NewMeetingPage() {
     }
 
     // 1) meetings を作成
-    const iso = new Date(meetingDate).toISOString(); // datetime-local → ISO
+    const iso = new Date(`${meetingDate}T00:00:00`).toISOString(); // 日付のみをISOへ
     const { data: insertedMeeting, error: meetErr } = await supabase
       .from('meetings')
       .insert({
@@ -345,7 +359,7 @@ export default function NewMeetingPage() {
       alert('保存に成功しました！');
       console.log('保存済み meeting_id:', meetingId);
       // 必要に応じて画面遷移:
-      // router.push(`/meetings/${meetingId}`);
+      router.push(`/meetings/${meetingId}`);
     } catch (e: any) {
       console.error(e);
       alert(`保存に失敗しました: ${e?.message || e}`);
@@ -464,8 +478,8 @@ useEffect(() => {
             type="text"
             id="title"
             name="title"
-            className="mt-1 block w-full px-3 py-2 border rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-            placeholder="例：第3回 開発定例ミーティング"
+            className="mt-1 block w-full px-3 py-2 border rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+            placeholder=""
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
@@ -478,14 +492,57 @@ useEffect(() => {
             開催日時
           </label>
           <input
-            type="datetime-local"
+            type="hidden"
             id="meeting_date"
             name="meeting_date"
-            className="mt-1 block w-full px-3 py-2 border rounded-md bg-white text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             value={meetingDate}
-            onChange={(e) => setMeetingDate(e.target.value)}
-            required
           />
+          <div className="mt-1 flex items-center gap-2">
+            <input
+              ref={yRef}
+              inputMode="numeric"
+              pattern="[0-9]{4}"
+              placeholder="YYYY"
+              className="w-28 px-3 py-2 border rounded-md bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              value={year}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
+                setYear(v);
+                if (v.length === 4) mRef.current?.focus();
+              }}
+              required
+            />
+            <span>年</span>
+            <input
+              ref={mRef}
+              inputMode="numeric"
+              pattern="[0-9]{2}"
+              placeholder="MM"
+              className="w-20 px-3 py-2 border rounded-md bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              value={month}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                setMonth(v);
+                if (v.length === 2) dRef.current?.focus();
+              }}
+              required
+            />
+            <span>月</span>
+            <input
+              ref={dRef}
+              inputMode="numeric"
+              pattern="[0-9]{2}"
+              placeholder="DD"
+              className="w-20 px-3 py-2 border rounded-md bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              value={day}
+              onChange={(e) => {
+                const v = e.target.value.replace(/[^0-9]/g, '').slice(0, 2);
+                setDay(v);
+              }}
+              required
+            />
+            <span>日</span>
+          </div>
         </div>
 
         {/* 文字起こし */}
@@ -500,7 +557,7 @@ useEffect(() => {
               name="transcript_file"
               accept=".txt,text/plain"
               onChange={handleFileUpload}
-              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
             />
             {uploadedFileName && <p className="text-xs text-gray-500">アップロード済み: {uploadedFileName}</p>}
             {fileError && <p className="text-xs text-red-600">{fileError}</p>}
@@ -509,9 +566,9 @@ useEffect(() => {
             id="transcript"
             name="transcript"
             rows={10}
-            className="mt-2 block w-full px-3 py-2 border rounded-md bg-white !text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            className="mt-2 block w-full px-3 py-2 border rounded-md bg-white !text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             style={{ color: '#111827' }}
-            placeholder="ここに文字起こしテキストを貼り付けてください..."
+            placeholder="会議名"
             value={transcript}
             onChange={(e) => setTranscript(e.target.value)}
             required
@@ -525,8 +582,8 @@ useEffect(() => {
             type="submit"
             disabled={isLoading || isDifyMissing}
             className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md text-sm font-medium text-white ${
-              isLoading || isDifyMissing ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700'
-            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500`}
+              isLoading || isDifyMissing ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
+            } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
           >
             {isLoading ? '解析中…' : '解析を実行する'}
           </button>
@@ -544,7 +601,7 @@ useEffect(() => {
                 <div key={`summary-${i}`} className="flex gap-2">
                   <input
                     type="text"
-                    className="flex-1 px-3 py-2 border rounded-md bg-white text-gray-900"
+                    className="flex-1 w-full px-3 py-2 border rounded-md bg-white text-gray-900"
                     value={s}
                     onChange={(e) => updateSummary(i, e.target.value)}
                     placeholder={`要約 ${i + 1}`}
@@ -554,7 +611,7 @@ useEffect(() => {
                   </button>
                 </div>
               ))}
-              <button className="mt-2 px-3 py-2 text-sm bg-indigo-50 text-indigo-700 rounded-md" type="button" onClick={addSummary}>
+              <button className="mt-2 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-md" type="button" onClick={addSummary}>
                 要約を追加
               </button>
             </div>
@@ -568,7 +625,7 @@ useEffect(() => {
                 <div key={`decision-${i}`} className="flex gap-2">
                   <input
                     type="text"
-                    className="flex-1 px-3 py-2 border rounded-md bg-white text-gray-900"
+                    className="flex-1 w-full px-3 py-2 border rounded-md bg-white text-gray-900"
                     value={d}
                     onChange={(e) => updateDecision(i, e.target.value)}
                     placeholder={`決定事項 ${i + 1}`}
@@ -578,7 +635,7 @@ useEffect(() => {
                   </button>
                 </div>
               ))}
-              <button className="mt-2 px-3 py-2 text-sm bg-indigo-50 text-indigo-700 rounded-md" type="button" onClick={addDecision}>
+              <button className="mt-2 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-md" type="button" onClick={addDecision}>
                 決定事項を追加
               </button>
             </div>
@@ -610,14 +667,14 @@ useEffect(() => {
                   />
 
                   {/* タスク内容 */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      className="flex-1 px-3 py-2 border rounded-md bg-white text-gray-900"
-                      placeholder="タスク内容"
+                  <div className="sm:col-span-3 flex gap-2">
+                    <textarea
+                      rows={2}
+                      className="flex-1 w-full px-3 py-2 border rounded-md bg-white text-gray-900"
+                      placeholder="会議名"
                       value={t.task}
                       onChange={(e) => updateTodoText(i, 'task', e.target.value)}
-                    />
+                    ></textarea>
                     <button
                       className="px-3 py-2 text-sm bg-gray-200 rounded-md"
                       onClick={() => {
@@ -632,7 +689,7 @@ useEffect(() => {
                 </div>
               ))}
               <button
-                className="mt-1 px-3 py-2 text-sm bg-indigo-50 text-indigo-700 rounded-md"
+                className="mt-1 px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded-md"
                 type="button"
                 onClick={() => parsed && setParsed({
                   ...parsed,
@@ -649,7 +706,7 @@ useEffect(() => {
               type="button"
               onClick={handleConfirm}
               disabled={isSaving}
-              className={`w-full py-2 px-4 rounded-md text-white ${isSaving ? 'bg-emerald-400' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+              className={`w-full py-2 px-4 rounded-md text-white ${isSaving ? 'bg-blue-400' : 'bg-blue-600 hover:bg-blue-700'}`}
             >
               {isSaving ? '保存中…' : '確定してDBに保存する'}
             </button>
@@ -668,3 +725,10 @@ useEffect(() => {
     </div>
   );
 }
+
+
+
+
+
+
+

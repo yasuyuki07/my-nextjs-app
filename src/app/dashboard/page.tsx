@@ -165,7 +165,7 @@ export default function DashboardPage() {
             value={statusFilter}
             onChange={(e) => setStatusFilter(toDbStatus(e.target.value) as StatusFilter)}
             className="status-select px-3 py-2 border rounded-md bg-white text-gray-900
-                       focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                       focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="all" className="text-black">すべて</option>
             {STATUS_OPTIONS.map((opt) => (
@@ -181,7 +181,7 @@ export default function DashboardPage() {
           onClick={() => setSortOrder((s) => (s === 'asc' ? 'desc' : 'asc'))}
           className="px-3 py-2 text-sm rounded-md border
                      bg-white text-gray-900 hover:bg-gray-50
-                     focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                     focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
           期限で並び替え: {sortOrder === 'asc' ? '昇順' : '降順'}
         </button>
@@ -212,7 +212,7 @@ export default function DashboardPage() {
                   onChange={(e) => handleStatusChange(t.id, e.target.value)}
                   disabled={savingId === t.id}
                   className="status-select px-2 py-1 border rounded-md bg-white text-gray-900
-                             focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 >
                   {STATUS_OPTIONS.map((opt) => (
                     <option key={opt.value} value={opt.value} className="text-black">

@@ -11,8 +11,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const rawApiKey = process.env.DIFY_API_KEY ?? process.env.NEXT_PUBLIC_DIFY_API_KEY
-  const apiKey = rawApiKey?.trim()
+  const apiKey = process.env.DIFY_API_KEY?.trim()
 
   if (!apiKey) {
     return NextResponse.json(
@@ -31,7 +30,7 @@ export async function POST(req: Request) {
       '以下は会議の文字起こしです。この内容をもとに、次の3つを必ず JSON で返してください。',
       '1) summary（最大全5点。重要度の高い論点や結論の要約を短文で。）',
       '2) decisions（決定事項：箇条書き。会議中に明確に合意/承認/決定された内容のみ（推測不可））',
-      '3) todos（担当者/期限/行動が分かる命令形/動詞始まりの短文（例:「◯◯の見積を作成」））',
+      '3) todos（担当者/期限日/行動が分かる命令形/動詞始まりの短文（例:「◯◯の見積を作成」））',
       '出力は以下のキー構造のみ：',
       '{ "summary":[], "decisions":[], "todos":[{"assignee":"","due_date":"","task":""}] }',
       '',

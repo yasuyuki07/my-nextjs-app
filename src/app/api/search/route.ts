@@ -7,8 +7,8 @@ export const dynamic = 'force-dynamic'
 
 type Hit =
   | { type: 'meeting'; id: string; title: string | null; meeting_date: string | null }
-  | { type: 'decision'; id: string; content: string; meeting_title: string | null }
-  | { type: 'todo'; id: string; task: string; status: string; meeting_title: string | null }
+  | { type: 'decision'; id: string; content: string; meeting_title: string | null; meeting_id: string }
+  | { type: 'todo'; id: string; task: string; status: string; meeting_title: string | null; meeting_id: string }
 
 function toBool(v: string | null) {
   return v === '1' || v === 'true'
@@ -47,7 +47,7 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
   if (inDecisions) {
     const { data, error } = await supabase
       .from('decisions')
-      .select('id, content, meetings(title)')
+      .select('id, content, meeting_id, meetings(title)')
       .ilike('content', `%${keyword}%`)
       .limit(20)
 
@@ -58,6 +58,7 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
           id: d.id as string,
           content: (d as any).content as string,
           meeting_title: ((d as any).meetings?.title as string) ?? null,
+          meeting_id: (d as any).meeting_id as string,
         })),
       )
     }
@@ -67,7 +68,7 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
   if (inTodos) {
     const { data, error } = await supabase
       .from('todos')
-      .select('id, task, status, meetings(title)')
+      .select('id, task, status, meeting_id, meetings(title)')
       .ilike('task', `%${keyword}%`)
       .limit(20)
 
@@ -79,6 +80,7 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
           task: (t as any).task as string,
           status: (t as any).status as string,
           meeting_title: ((t as any).meetings?.title as string) ?? null,
+          meeting_id: (t as any).meeting_id as string,
         })),
       )
     }

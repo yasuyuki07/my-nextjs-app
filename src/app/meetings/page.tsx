@@ -1,6 +1,6 @@
 // src/app/meetings/page.tsx
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 
 type MeetingRow = {
@@ -18,8 +18,7 @@ export default async function MeetingsPage() {
   // 必要なら認証チェック（未ログインは 404/リダイレクトにする）
   const { data: auth } = await supabase.auth.getUser()
   if (!auth.user?.id) {
-    // notFound() でも redirect('/login') でもOK
-    notFound()
+    redirect('/login')
   }
 
   // 一覧取得
@@ -41,7 +40,7 @@ export default async function MeetingsPage() {
     <div className="max-w-3xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">会議一覧</h1>
-        <Link href="/meetings/new" className="text-sm text-indigo-600 hover:underline">
+        <Link href="/meetings/new" className="text-sm text-blue-600 hover:underline">
           新規作成
         </Link>
       </div>

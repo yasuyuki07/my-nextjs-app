@@ -114,7 +114,7 @@ export default function SearchClient() {
           ToDoから
         </label>
 
-        <button type="submit" className="px-3 py-2 rounded-md bg-indigo-600 text-white">
+        <button type="submit" className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
           検索
         </button>
       </form>
@@ -123,20 +123,32 @@ export default function SearchClient() {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <ul className="space-y-3">
-        {hits.map((h) => (
-          <li key={`${h.type}-${h.id}`} className="border rounded-md p-3 bg-white text-gray-900">
-            <div className="text-xs text-gray-500 mb-1">{h.type}</div>
-            <div className="font-medium">
-              {String(
-                (h as any).title ??
-                (h as any).content ??
-                (h as any).task ??
-                (h as any).meeting_title ??
-                '',
+        {hits.map((h) => {
+          const title = String(
+            (h as any).title ??
+            (h as any).content ??
+            (h as any).task ??
+            (h as any).meeting_title ??
+            ''
+          );
+          const dest = h.type === 'meeting'
+            ? `/meetings/${h.id}`
+            : (h as any).meeting_id
+              ? `/meetings/${(h as any).meeting_id}`
+              : null;
+          return (
+            <li key={`${h.type}-${h.id}`} className="border rounded-md p-3 bg-white text-gray-900">
+              <div className="text-xs text-gray-500 mb-1">{h.type}</div>
+              {dest ? (
+                <a href={dest} className="font-medium underline-offset-2 hover:underline">
+                  {title}
+                </a>
+              ) : (
+                <div className="font-medium">{title}</div>
               )}
-            </div>
-          </li>
-        ))}
+            </li>
+          );
+        })}
         {!loading && !error && hits.length === 0 && (
           <li className="text-sm text-gray-500">該当なし</li>
         )}
