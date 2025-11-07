@@ -2,14 +2,15 @@ html,
 body {
   --custom-font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto,
     Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
-  --custom-bg-color: #101010;
-  --custom-panel-color: #222;
-  --custom-box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.8);
-  --custom-color: #fff;
-  --custom-color-brand: #24b47e;
-  --custom-color-secondary: #666;
-  --custom-border: 1px solid #333;
-  --custom-border-radius: 5px;
+  /* Light blue & white base */
+  --custom-bg-color: #f5f7fb;           /* page background */
+  --custom-panel-color: #ffffff;        /* cards, inputs */
+  --custom-box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --custom-color: #1f2937;              /* text (gray-800) */
+  --custom-color-brand: #2563eb;        /* primary blue */
+  --custom-color-secondary: #6b7280;    /* text secondary */
+  --custom-border: 1px solid rgba(0,0,0,0.08);
+  --custom-border-radius: 8px;
   --custom-spacing: 5px;
 
   padding: 0;
@@ -177,11 +178,11 @@ label {
 
 input {
   width: 100%;
-  border-radius: 5px;
+  border-radius: 8px;
   border: var(--custom-border);
-  padding: 8px;
-  font-size: 0.9rem;
-  background-color: var(--custom-bg-color);
+  padding: 10px 12px;
+  font-size: 0.95rem;
+  background-color: var(--custom-panel-color);
   color: var(--custom-color);
 }
 
@@ -238,23 +239,21 @@ input[disabled] {
 
 button,
 .button {
-  color: var(--custom-color);
-  border: var(--custom-border);
-  background-color: var(--custom-bg-color);
+  color: #ffffff;
+  border: 1px solid transparent;
+  background-color: var(--custom-color-brand);
   display: inline-block;
   text-align: center;
   border-radius: var(--custom-border-radius);
-  padding: 0.5rem 1rem;
+  padding: 0.6rem 1rem;
   cursor: pointer;
-  text-align: center;
-  font-size: 0.9rem;
-  text-transform: uppercase;
+  font-size: 0.95rem;
 }
 
 button.primary,
 .button.primary {
   background-color: var(--custom-color-brand);
-  border: 1px solid var(--custom-color-brand);
+  border-color: var(--custom-color-brand);
 }
 
 /* Widgets */
@@ -297,6 +296,49 @@ button.primary,
   display: flex;
   align-items: center;
   width: 100%;
+}
+
+/* Start page custom buttons (in case Tailwind utilities are not available) */
+.btn-primary {
+  display: block;
+  background-color: var(--custom-color-brand);
+  color: #fff;
+  text-decoration: none;
+  text-align: center;
+  border-radius: 10px;
+  border: 1px solid var(--custom-color-brand);
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.btn-primary:hover {
+  background-color: #1d4ed8;
+  border-color: #1d4ed8;
+}
+.btn-lg {
+  padding: 16px 24px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.start-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 640px) {
+  .start-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Ensure header (topbar) text is white on blue background */
+.topbar, .topbar * {
+  /* allow Tailwind to override if present; otherwise keep white */
+}
+.topbar a, .topbar a:visited, .topbar .text {
+  color: #fff;
+}
+.topbar a:hover {
+  color: #fff;
+  opacity: 0.95;
 }
 .footer div > img {
   height: 20px;
@@ -379,3 +421,4 @@ button.primary,
 .status-select option {
   color: #000;
 }
+@import "tailwindcss";

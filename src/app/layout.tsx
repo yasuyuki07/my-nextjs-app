@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import TopNav from "@/components/TopNav";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -27,29 +28,8 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 text-gray-900`}>
-        {/* Header / Global Nav */}
-        <header className="sticky top-0 z-20 border-b bg-white/90 backdrop-blur">
-          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
-            <Link href="/" className="font-semibold hover:opacity-80">
-              AI Meeting App
-            </Link>
-            <nav className="flex items-center gap-4 text-sm">
-              <Link href="/meetings/new" className="text-gray-700 hover:text-indigo-600">
-                新規解析
-              </Link>
-              <Link href="/dashboard" className="text-gray-700 hover:text-indigo-600">
-                マイダッシュボード
-              </Link>
-              {/* ← F-15 の導線：検索ページ */}
-              <Link
-                href="/search"
-                className="inline-flex items-center rounded-md border px-3 py-1.5 bg-indigo-600 text-white hover:bg-indigo-700"
-              >
-                検索
-              </Link>
-            </nav>
-          </div>
-        </header>
+        {/* Header / Global Nav (hidden on /login) */}
+        <TopNav />
 
         {/* Page contents */}
         <main className="max-w-5xl mx-auto px-4 py-6">

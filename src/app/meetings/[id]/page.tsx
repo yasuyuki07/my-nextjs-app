@@ -110,7 +110,7 @@ export default async function MeetingDetailPage({
     <div className="max-w-3xl mx-auto p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">会議詳細</h1>
-        <Link href="/meetings" className="text-sm text-indigo-600 hover:underline">
+        <Link href="/meetings" className="text-sm text-blue-600 hover:underline">
           一覧へ戻る
         </Link>
       </div>

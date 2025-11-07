@@ -15,7 +15,7 @@ export default async function LoginPage({ searchParams }) {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
       {ok === 'check-email' && (
-        <p className="text-sm text-emerald-700">
+        <p className="text-sm text-blue-700">
           登録メールを確認してください。その後サインインしてください。
         </p>
       )}
@@ -27,7 +27,7 @@ export default async function LoginPage({ searchParams }) {
       <input id="password" name="password" type="password" required className="border px-3 py-2 w-full"/>
 
       <div className="flex gap-2 pt-2">
-        <button formAction={login} className="px-4 py-2 bg-indigo-600 text-white rounded">
+        <button formAction={login} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
           Log in
         </button>
         <button formAction={signup} className="px-4 py-2 bg-gray-200 rounded">

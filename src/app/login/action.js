@@ -20,7 +20,7 @@ export async function login(formData) {
   // 画面キャッシュを無効化（任意）
   revalidatePath('/', 'layout')
   // ここを本アプリの遷移先に
-  redirect('/meetings/new')
+  redirect('/')
 }
 
 // サインアップ
