@@ -7,7 +7,7 @@ export default function TopNav() {
   const pathname = usePathname()
 
   // Hide on login page
-  if (pathname === '/login') return null
+  if (pathname === '/login' || pathname === '/signup') return null
 
   return (
     <header className="sticky top-0 z-20 border-b bg-blue-700 topbar">
@@ -19,16 +19,16 @@ export default function TopNav() {
           <Link href="/dashboard" className="px-3 py-2 rounded-md text-white hover:bg-blue-600">
             ToDo
           </Link>
+          <Link href="/todos" className="px-3 py-2 rounded-md text-white hover:bg-blue-600">
+            全体ToDo
+          </Link>
           <Link href="/meetings/new" className="px-3 py-2 rounded-md text-white hover:bg-blue-600">
             会議の要約
           </Link>
           <Link href="/meetings" className="px-3 py-2 rounded-md text-white hover:bg-blue-600">
             会議一覧
           </Link>
-          <Link
-            href="/search"
-            className="inline-flex items-center rounded-md border border-transparent px-3 py-2 bg-blue-600 text-white hover:bg-blue-500"
-          >
+          <Link href="/search" className="px-3 py-2 rounded-md text-white hover:bg-blue-600">
             検索
           </Link>
         </nav>
@@ -36,4 +36,3 @@ export default function TopNav() {
     </header>
   )
 }
-
