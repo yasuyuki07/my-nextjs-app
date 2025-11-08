@@ -10,6 +10,7 @@ export default function Home() {
         <Link href="/meetings/new" className="btn-primary btn-lg">新しい会議を要約</Link>
         <Link href="/meetings" className="btn-primary btn-lg">会議一覧へ</Link>
         <Link href="/search" className="btn-primary btn-lg">検索</Link>
+        <Link href="/todos" className="btn-primary btn-lg">全体のToDoを確認する</Link>
       </div>
     </div>
   );

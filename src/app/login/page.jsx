@@ -1,4 +1,5 @@
-import { login, signup } from './action'
+import { login } from './action'
+import Link from 'next/link'
 
 // Server Component なので async にして OK
 export default async function LoginPage({ searchParams }) {
@@ -28,11 +29,11 @@ export default async function LoginPage({ searchParams }) {
 
       <div className="flex gap-2 pt-2">
         <button formAction={login} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
-          Log in
+          ログイン
         </button>
-        <button formAction={signup} className="px-4 py-2 bg-gray-200 rounded">
-          Sign up
-        </button>
+        <Link href="/signup" className="px-4 py-2 rounded text-blue-700 hover:underline">
+          新規登録ページへ
+        </Link>
       </div>
     </form>
   )
