@@ -45,3 +45,20 @@ export async function logout() {
   await supabase.auth.signOut()
   redirect('/login')
 }
+
+// 画面をリセットせずにエラーメッセージを返すログイン（useFormState 用）
+export async function loginAction(prevState, formData) {
+  const supabase = await createClient()
+
+  const email = String(formData.get('email') || '')
+  const password = String(formData.get('password') || '')
+
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) {
+    return { error: 'メールアドレスまたはパスワードが違います' }
+  }
+
+  revalidatePath('/', 'layout')
+  redirect('/')
+}
+
