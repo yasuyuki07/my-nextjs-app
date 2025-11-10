@@ -1,6 +1,6 @@
 // src/app/meetings/[id]/page.tsx
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
 
 type Profile = { id: string; full_name: string | null; username: string | null }
@@ -50,7 +50,7 @@ export default async function MeetingDetailPage({
 
   // 1) 認証（RLS のため必要）
   const { data: auth } = await supabase.auth.getUser()
-  if (!auth.user?.id) notFound()
+  if (!auth.user?.id) redirect('/login')
 
   // 2) 会議本体
   const { data: meeting, error: mErr } = await supabase
