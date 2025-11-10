@@ -331,7 +331,7 @@ button.primary,
 
 /* Ensure header (topbar) text is white on blue background */
 .topbar, .topbar * {
-  /* allow Tailwind to override if present; otherwise keep white */
+  color: #fff !important;
 }
 .topbar a, .topbar a:visited, .topbar .text {
   color: #fff;

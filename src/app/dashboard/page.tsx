@@ -84,8 +84,8 @@ export default function DashboardPage() {
       }
       const userId = userData.user?.id;
       if (!userId) {
-        setError('ログインが必要です。/login からサインインしてください。');
-        setLoading(false);
+        // 未ログインはログイン画面へ遷移
+        window.location.href = '/login';
         return;
       }
 

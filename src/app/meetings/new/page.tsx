@@ -163,6 +163,25 @@ export default function NewMeetingPage() {
   const [profilesLoading, setProfilesLoading] = useState(false);
   const [profilesError, setProfilesError] = useState<string | null>(null);
 
+  // 認証チェック（未ログインは /login へ遷移）
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (!cancelled && !data.user) {
+          window.location.href = '/login';
+        }
+      } catch {
+        if (!cancelled) {
+          window.location.href = '/login';
+        }
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, []);
+
   // .txtアップロード
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
