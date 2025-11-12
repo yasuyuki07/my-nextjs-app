@@ -46,10 +46,10 @@ export default function TopNav() {
     <header className="sticky top-0 z-20 border-b bg-blue-700 topbar">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between text-white">
         <Link href="/" className="font-semibold text-white hover:opacity-90">
-          AI Meeting App
+          MeetingHub
         </Link>
-        <div className="flex items-center gap-3">
-          <nav className="flex items-center gap-1 text-sm">
+        <div className="flex items-center gap-2 flex-wrap justify-end">
+          <nav className="flex items-center gap-1 text-sm flex-wrap">
             <Link href="/dashboard" className="px-3 py-2 rounded-md text-white hover:bg-blue-600">
               ToDo
             </Link>
@@ -57,7 +57,7 @@ export default function TopNav() {
               全体ToDo
             </Link>
             <Link href="/meetings/new" className="px-3 py-2 rounded-md text-white hover:bg-blue-600">
-              会議の要約
+              会議要約
             </Link>
             <Link href="/meetings" className="px-3 py-2 rounded-md text-white hover:bg-blue-600">
               会議一覧
@@ -67,7 +67,7 @@ export default function TopNav() {
             </Link>
           </nav>
           {userLabel && (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex items-center gap-2 text-sm order-last w-full sm:w-auto sm:order-none justify-end">
               <span className="px-2 py-1 rounded bg-blue-600/60 text-white">{userLabel}</span>
               <button
                 type="button"
