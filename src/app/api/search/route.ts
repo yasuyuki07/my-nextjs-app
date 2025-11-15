@@ -10,12 +10,7 @@ type Hit =
   | { type: 'decision'; id: string; content: string; meeting_title: string | null; meeting_id: string }
   | { type: 'todo'; id: string; task: string; status: string; meeting_title: string | null; meeting_id: string }
 
-function toBool(v: string | null) {
-  return v === '1' || v === 'true'
-}
-
-async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boolean }) {
-  const { q, inDecisions, inTodos } = params
+async function runSearch(q: string) {
   const supabase = await createClient() // ★ ここを await に
   const hits: Hit[] = []
 
@@ -43,8 +38,8 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
     }
   }
 
-  // --- decisions: content を検索（チェック時のみ） ---
-  if (inDecisions) {
+  // --- decisions: content を検索 ---
+  {
     const { data, error } = await supabase
       .from('decisions')
       .select('id, content, meeting_id, meetings(title)')
@@ -64,8 +59,8 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
     }
   }
 
-  // --- todos: task を検索（チェック時のみ） ---
-  if (inTodos) {
+  // --- todos: task を検索 ---
+  {
     const { data, error } = await supabase
       .from('todos')
       .select('id, task, status, meeting_id, meetings(title)')
@@ -94,23 +89,17 @@ async function runSearch(params: { q: string; inDecisions: boolean; inTodos: boo
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const q = url.searchParams.get('q') ?? ''
-  const inDecisions = toBool(url.searchParams.get('d'))
-  const inTodos = toBool(url.searchParams.get('t'))
 
-  const result = await runSearch({ q, inDecisions, inTodos })
+  const result = await runSearch(q)
   return NextResponse.json(result, { status: 200 })
 }
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
     q?: string
-    d?: string | boolean
-    t?: string | boolean
   }
   const q = body.q ?? ''
-  const inDecisions = typeof body.d === 'boolean' ? body.d : toBool(String(body.d ?? ''))
-  const inTodos = typeof body.t === 'boolean' ? body.t : toBool(String(body.t ?? ''))
 
-  const result = await runSearch({ q, inDecisions, inTodos })
+  const result = await runSearch(q)
   return NextResponse.json(result, { status: 200 })
 }
