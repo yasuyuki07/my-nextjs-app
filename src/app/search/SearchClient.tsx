@@ -14,8 +14,6 @@ export default function SearchClient() {
 
   // まずは URL から初期値を読み込み
   const [q, setQ] = useState(sp.get('q') ?? '');
-  const [inDecisions, setInDecisions] = useState(sp.get('d') === '1');
-  const [inTodos, setInTodos] = useState(sp.get('t') === '1');
 
   // 表示用状態
   const [hits, setHits] = useState<Hit[]>([]);
@@ -30,10 +28,8 @@ export default function SearchClient() {
   const queryString = useMemo(() => {
     const p = new URLSearchParams();
     if (q.trim()) p.set('q', q.trim());
-    if (inDecisions) p.set('d', '1');
-    if (inTodos) p.set('t', '1');
     return p.toString();
-  }, [q, inDecisions, inTodos]);
+  }, [q]);
 
   // URL を同期（← レンダー中ではなく useEffect 内で）
   useEffect(() => {
@@ -95,24 +91,6 @@ export default function SearchClient() {
           placeholder="キーワード"
           className="flex-1 min-w-[220px] px-3 py-2 border rounded-md bg-white text-gray-900"
         />
-
-        <label className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={inDecisions}
-            onChange={(e) => setInDecisions(e.target.checked)}
-          />
-          決定事項から
-        </label>
-
-        <label className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={inTodos}
-            onChange={(e) => setInTodos(e.target.checked)}
-          />
-          ToDoから
-        </label>
 
         <button type="submit" className="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
           検索
