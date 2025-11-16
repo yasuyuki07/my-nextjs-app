@@ -1,8 +1,8 @@
 // src/app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
 import TopNav from "@/components/TopNav";
+import HelpModal from "@/components/HelpModal";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -35,6 +35,7 @@ export default function RootLayout({
         <main className="max-w-5xl mx-auto px-4 py-6">
           {children}
         </main>
+        <HelpModal />
       </body>
     </html>
   );
