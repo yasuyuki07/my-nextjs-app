@@ -614,13 +614,13 @@ useEffect(() => {
         <div className="mt-8 space-y-8">
           {/* 要約 */}
           <section>
-            <h2 className="text-lg font-semibold mb-3">要約（summary）</h2>
+            <h2 className="text-lg font-semibold mb-3">要約</h2>
             <div className="space-y-2">
               {parsed.summary.map((s, i) => (
                 <div key={`summary-${i}`} className="flex gap-2">
-                  <input
-                    type="text"
-                    className="flex-1 w-full px-3 py-2 border rounded-md bg-white text-gray-900"
+                  <textarea
+                    rows={3}
+                    className="flex-1 w-full px-3 py-2 border rounded-md bg-white text-gray-900 resize-none"
                     value={s}
                     onChange={(e) => updateSummary(i, e.target.value)}
                     placeholder={`要約 ${i + 1}`}
@@ -638,13 +638,13 @@ useEffect(() => {
 
           {/* 決定事項 */}
           <section>
-            <h2 className="text-lg font-semibold mb-3">決定事項（decisions）</h2>
+            <h2 className="text-lg font-semibold mb-3">決定事項</h2>
             <div className="space-y-2">
               {parsed.decisions.map((d, i) => (
                 <div key={`decision-${i}`} className="flex gap-2">
-                  <input
-                    type="text"
-                    className="flex-1 w-full px-3 py-2 border rounded-md bg-white text-gray-900"
+                  <textarea
+                    rows={3}
+                    className="flex-1 w-full px-3 py-2 border rounded-md bg-white text-gray-900 resize-none"
                     value={d}
                     onChange={(e) => updateDecision(i, e.target.value)}
                     placeholder={`決定事項 ${i + 1}`}
