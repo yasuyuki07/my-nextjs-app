@@ -1,9 +1,11 @@
 import { signup } from './action'
 import Link from 'next/link'
+import GoogleAuthButton from '@/components/GoogleAuthButton'
 
 export default async function SignupPage({ searchParams }) {
   const sp = await searchParams
   const error = typeof sp?.error === 'string' ? sp.error : undefined
+  const next = typeof sp?.next === 'string' && sp.next.startsWith('/') ? sp.next : '/'
 
   return (
     <form className="max-w-md mx-auto p-6 space-y-4">
@@ -12,10 +14,10 @@ export default async function SignupPage({ searchParams }) {
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <label htmlFor="email">Email:</label>
-      <input id="email" name="email" type="email" required className="border px-3 py-2 w-full"/>
+      <input id="email" name="email" type="email" required className="border px-3 py-2 w-full" />
 
       <label htmlFor="password">Password:</label>
-      <input id="password" name="password" type="password" required className="border px-3 py-2 w-full"/>
+      <input id="password" name="password" type="password" required className="border px-3 py-2 w-full" />
 
       <div className="flex gap-2 pt-2">
         <button formAction={signup} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded">
@@ -25,7 +27,11 @@ export default async function SignupPage({ searchParams }) {
           ログインへ戻る
         </Link>
       </div>
+
+      <div className="pt-4 border-t border-gray-200 space-y-3">
+        <GoogleAuthButton nextPath={next} text="Googleでログイン / 登録" />
+        <p className="text-xs text-gray-500 text-center">Googleアカウントですぐに登録・ログインできます</p>
+      </div>
     </form>
   )
 }
-

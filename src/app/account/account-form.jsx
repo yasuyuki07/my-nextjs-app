@@ -111,15 +111,8 @@ export default function AccountForm({ user }) {
           onClick={() => updateProfile({ fullname, username, website, avatar_url: avatarUrl })}
           disabled={loading}
         >
-          {loading ? 'Loading ...' : 'Update'}
+          {loading ? 'Loading ...' : '更新'}
         </button>
-      </div>
-      <div>
-        <form action="/auth/signout" method="post">
-          <button className="button block" type="submit">
-            Sign out
-          </button>
-        </form>
       </div>
     </div>
   )

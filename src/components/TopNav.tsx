@@ -68,7 +68,13 @@ export default function TopNav() {
           </nav>
           {userLabel && (
             <div className="flex items-center gap-2 text-sm order-last w-full sm:w-auto sm:order-none justify-end">
-              <span className="px-2 py-1 rounded bg-blue-600/60 text-white">{userLabel}</span>
+              <Link
+                href="/account"
+                className="px-2 py-1 rounded bg-blue-600/60 text-white hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                title="プロフィールを表示・編集"
+              >
+                {userLabel}
+              </Link>
               <button
                 type="button"
                 onClick={async () => {
