@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 
 type DbStatus = 'open' | 'in_progress' | 'done';
 
@@ -167,13 +166,25 @@ export default function AllTodosClient({ initialTodos }: Props) {
     const previous = todos.find((t) => t.id === id)?.status ?? 'open';
     setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, status: next } : t)));
 
-    const { error: upErr } = await supabase.from('todos').update({ status: next }).eq('id', id);
-    setSavingId(null);
+    try {
+      const res = await fetch('/api/admin/todos/status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: next }),
+      });
 
-    if (upErr) {
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        const message = typeof payload?.error === 'string' ? payload.error : 'Failed to update status.';
+        throw new Error(message);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update status.';
       setTodos((prev) => prev.map((t) => (t.id === id ? { ...t, status: previous } : t)));
-      setError(upErr.message);
-      alert(`ステータス更新に失敗しました: ${upErr.message}`);
+      setError(message);
+      alert(`ステータス更新に失敗しました: ${message}`);
+    } finally {
+      setSavingId(null);
     }
   };
 
