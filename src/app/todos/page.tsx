@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
+import { getServiceRoleSupabase } from '@/utils/supabase/service-role'
 import AllTodosClient, { AdminTodo } from './AllTodosClient'
 
 type DbStatus = 'open' | 'in_progress' | 'done'
@@ -21,11 +22,14 @@ export const dynamic = 'force-dynamic'
 
 export default async function AllTodosPage() {
   const supabase = await createClient()
+  const adminSupabase = getServiceRoleSupabase()
+  const serviceRoleAvailable = Boolean(adminSupabase)
+  const client = adminSupabase ?? supabase
 
   const { data: auth } = await supabase.auth.getUser()
   if (!auth.user?.id) redirect('/login')
 
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from('todos')
     .select('id, task, status, due_date, assignee_id, meetings(id, title, meeting_date)')
     .order('due_date', { ascending: true })
@@ -37,7 +41,7 @@ export default async function AllTodosPage() {
   const assigneeIds = Array.from(new Set(rows.map(r => r.assignee_id).filter((v): v is string => !!v)))
   const profilesById = new Map<string, Profile>()
   if (assigneeIds.length > 0) {
-    const { data: profiles } = await supabase
+    const { data: profiles } = await client
       .from('profiles')
       .select('id, full_name, username')
       .in('id', assigneeIds)
@@ -63,6 +67,13 @@ export default async function AllTodosPage() {
         <h1 className="text-2xl font-bold">全体のToDo（管理者）</h1>
         <Link href="/" className="text-sm text-blue-600 hover:underline">スタートへ戻る</Link>
       </div>
+
+      {!serviceRoleAvailable && (
+        <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-3">
+          SUPABASE_SERVICE_ROLE_KEY is not configured, so only rows allowed by RLS are shown.
+          Add the service role key to the server environment to enable the full company-wide list.
+        </p>
+      )}
 
       <AllTodosClient initialTodos={adminTodos} />
     </div>
